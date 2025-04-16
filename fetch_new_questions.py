@@ -13,11 +13,17 @@ BASE_Q_URL = "http://moazrovne.net/q/"
 os.makedirs(HTML_DIR, exist_ok=True)
 os.makedirs(IMAGE_DIR, exist_ok=True)
 
-if os.path.exists(CSV_PATH):
-    df = pd.read_csv(CSV_PATH, encoding="utf-8")
-    df["question_id"] = pd.to_numeric(df["question_id"], errors="coerce")
-    max_qid = int(df["question_id"].max())
-else:
+# Safe CSV loading
+try:
+    if os.path.exists(CSV_PATH) and os.path.getsize(CSV_PATH) > 0:
+        df = pd.read_csv(CSV_PATH, encoding="utf-8")
+        df["question_id"] = pd.to_numeric(df["question_id"], errors="coerce")
+        max_qid = int(df["question_id"].max())
+        print(f"✅ Loaded existing dataset. Last question ID: {max_qid}", flush=True)
+    else:
+        raise ValueError("CSV is empty or missing")
+except Exception as e:
+    print(f"⚠️ Starting fresh: {e}", flush=True)
     df = pd.DataFrame()
     max_qid = 0
 
@@ -75,7 +81,7 @@ for qid in range(max_qid + 1, max_qid + 500):
     author_tag = soup.select_one("p.question_top .right")
     author = author_tag.text.strip("© ").strip() if author_tag else ""
 
-    # Image handling (supports <img> or <a>)
+    # Image handling
     has_image = 0
     image_tag = soup.select_one("p.question_question img, a.shadowbox")
 
