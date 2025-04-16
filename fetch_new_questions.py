@@ -24,7 +24,10 @@ new_data = []
 for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
     url = BASE_Q_URL + str(qid)
     r = requests.get(url)
-    if r.status_code == 404:
+    soup = BeautifulSoup(r.text, "html.parser")
+    error_header = soup.select_one("div.content > h1")
+    if error_header and error_header.get_text(strip=True) == "404":
+        print(f"⛔ Reached 404 at question {qid}. Stopping.")
         break
 
     html_path = os.path.join(HTML_DIR, f"q_{qid}.html")
