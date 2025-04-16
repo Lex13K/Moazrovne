@@ -21,14 +21,24 @@ else:
 
 new_data = []
 
+missing_streak = 0
+MAX_MISSING = 5  # how many missing in a row before stopping
+
 for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
     url = BASE_Q_URL + str(qid)
     r = requests.get(url)
     soup = BeautifulSoup(r.text, "html.parser")
     error_header = soup.select_one("div.content > h1")
+    
     if error_header and error_header.get_text(strip=True) == "404":
-        print(f"⛔ Reached 404 at question {qid}. Stopping.")
-        break
+        print(f"⚠️  Question {qid} missing (404).")
+        missing_streak += 1
+        if missing_streak >= MAX_MISSING:
+            print(f"⛔ Stopped after {MAX_MISSING} missing questions in a row.")
+            break
+        continue
+    else:
+        missing_streak = 0  # reset if we find a valid question
 
     html_path = os.path.join(HTML_DIR, f"q_{qid}.html")
     with open(html_path, "w", encoding="utf-8") as f:
