@@ -1,0 +1,33 @@
+name: Update Moazrovne Dataset
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # every Monday at 08:00 UTC
+  workflow_dispatch:       # allows manual triggering too
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: pip install requests beautifulsoup4 pandas
+
+    - name: Run scraper
+      run: python fetch_new_questions.py
+
+    - name: Commit & push changes
+      run: |
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git add data/moazrovne_dataset.csv data/html/
+        git commit -m "🔄 Auto-update Moazrovne dataset"
+        git push
