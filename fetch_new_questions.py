@@ -73,29 +73,36 @@ for qid in range(max_qid + 1, max_qid + 500):
 
     question = soup.select_one("p.question_question")
     author_tag = soup.select_one("p.question_top .right")
-    image_tag = soup.select_one("p.question_question a.shadowbox")
     author = author_tag.text.strip("© ").strip() if author_tag else ""
 
-    # Image handling
+    # Image handling (supports <img> or <a>)
     has_image = 0
-    if image_tag and "href" in image_tag.attrs:
-        image_url = image_tag["href"].strip()
-        image_filename = f"qid_{qid}.jpg"
-        image_path = os.path.join(IMAGE_DIR, image_filename)
+    image_tag = soup.select_one("p.question_question img, a.shadowbox")
 
-        if os.path.exists(image_path):
-            print(f"🖼️ Image already exists for qid {qid}, skipping download", flush=True)
-            has_image = 1
+    if image_tag:
+        if image_tag.name == "a" and "href" in image_tag.attrs:
+            image_url = image_tag["href"].strip()
+        elif image_tag.name == "img" and "src" in image_tag.attrs:
+            image_url = image_tag["src"].strip()
         else:
-            try:
-                print(f"⬇️ Downloading image for qid {qid}", flush=True)
-                img_data = requests.get(image_url, timeout=10).content
-                with open(image_path, "wb") as f:
-                    f.write(img_data)
+            image_url = ""
+
+        if image_url:
+            image_filename = f"qid_{qid}.jpg"
+            image_path = os.path.join(IMAGE_DIR, image_filename)
+
+            if os.path.exists(image_path):
+                print(f"🖼️ Image already exists for qid {qid}, skipping download", flush=True)
                 has_image = 1
-            except Exception as e:
-                print(f"⚠️ Failed to download image for qid {qid}: {e}", flush=True)
-                has_image = 0
+            else:
+                try:
+                    print(f"⬇️ Downloading image for qid {qid}", flush=True)
+                    img_data = requests.get(image_url, timeout=10).content
+                    with open(image_path, "wb") as f:
+                        f.write(img_data)
+                    has_image = 1
+                except Exception as e:
+                    print(f"⚠️ Failed to download image for qid {qid}: {e}", flush=True)
     else:
         print(f"⚠️ No image tag found for qid {qid}, skipping image", flush=True)
 
