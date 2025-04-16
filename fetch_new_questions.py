@@ -106,6 +106,7 @@ for qid in range(max_qid + 1, max_qid + 500):
                     img_data = requests.get(image_url, timeout=10).content
                     with open(image_path, "wb") as f:
                         f.write(img_data)
+                        print(f"✅ Saved image: {image_path}", flush=True)
                     has_image = 1
                 except Exception as e:
                     print(f"⚠️ Failed to download image for qid {qid}: {e}", flush=True)
