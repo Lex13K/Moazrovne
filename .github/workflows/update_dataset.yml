@@ -1,13 +1,13 @@
 name: Update Moazrovne Dataset
-
 on:
   schedule:
-    - cron: '0 8 * * 1'  # every Monday at 08:00 UTC
+    - cron: '0 2 * * 4'  # every Wednesday at 10:00 PM Eastern Time (converted to UTC)
   workflow_dispatch:       # allows manual triggering too
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
     - name: Checkout repo

@@ -2,6 +2,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import time
 
 DATA_DIR = "data"
 HTML_DIR = os.path.join(DATA_DIR, "html")
@@ -26,8 +27,13 @@ MAX_MISSING = 5  # how many 404s in a row before stopping
 BUFFER_ID = 2000  # IDs below this don't trigger stopping
 
 for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
+
+    if qid % 50 == 0:
+        print(f"Progress: Scraping question {qid}...", flush=True)
+    
     url = BASE_Q_URL + str(qid)
     r = requests.get(url)
+    time.sleep(0.1) 
     soup = BeautifulSoup(r.text, "html.parser")
     error_header = soup.select_one("div.content > h1")
 
