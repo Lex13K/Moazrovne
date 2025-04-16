@@ -22,23 +22,26 @@ else:
 new_data = []
 
 missing_streak = 0
-MAX_MISSING = 5  # how many missing in a row before stopping
+MAX_MISSING = 5  # how many 404s in a row before stopping
+BUFFER_ID = 2000  # IDs below this don't trigger stopping
 
 for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
     url = BASE_Q_URL + str(qid)
     r = requests.get(url)
     soup = BeautifulSoup(r.text, "html.parser")
     error_header = soup.select_one("div.content > h1")
-    
+
     if error_header and error_header.get_text(strip=True) == "404":
-        print(f"⚠️  Question {qid} missing (404).")
-        missing_streak += 1
-        if missing_streak >= MAX_MISSING:
-            print(f"⛔ Stopped after {MAX_MISSING} missing questions in a row.")
-            break
+        print(f"⚠️ Question {qid} is missing (404).")
+        
+        if qid > BUFFER_ID:
+            missing_streak += 1
+            if missing_streak >= MAX_MISSING:
+                print(f"⛔ Stopped after {MAX_MISSING} consecutive missing questions past ID {BUFFER_ID}.")
+                break
         continue
     else:
-        missing_streak = 0  # reset if we find a valid question
+        missing_streak = 0  # reset if valid question found
 
     html_path = os.path.join(HTML_DIR, f"q_{qid}.html")
     with open(html_path, "w", encoding="utf-8") as f:
