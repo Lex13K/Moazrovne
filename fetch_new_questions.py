@@ -19,6 +19,7 @@ else:
     df = pd.DataFrame()
     max_qid = 0
 
+last_print_time = time.time()
 new_data = []
 
 missing_streak = 0
@@ -28,7 +29,10 @@ BUFFER_ID = 2000  # IDs below this don't trigger stopping
 for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
 
     if qid % 50 == 0:
-        print(f"Progress: Scraping question {qid}...", flush=True)
+        now = time.time()
+        elapsed = now - last_print_time
+        print(f"⏳ Progress: Scraping questions {qid}... (last 50 took {elapsed:.2f}s)", flush=True)
+        last_print_time = now
     
     url = BASE_Q_URL + str(qid)
     r = requests.get(url)
