@@ -11,7 +11,6 @@ BASE_Q_URL = "http://moazrovne.net/q/"
 
 os.makedirs(HTML_DIR, exist_ok=True)
 
-# Load existing data
 if os.path.exists(CSV_PATH):
     df = pd.read_csv(CSV_PATH, encoding="utf-8")
     df["question_id"] = pd.to_numeric(df["question_id"], errors="coerce")
@@ -47,7 +46,7 @@ for qid in range(int(max_qid) + 1, int(max_qid) + 1000):
                 break
         continue
     else:
-        missing_streak = 0  # reset if valid question found
+        missing_streak = 0
 
     html_path = os.path.join(HTML_DIR, f"q_{qid}.html")
     with open(html_path, "w", encoding="utf-8") as f:
