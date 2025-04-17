@@ -1,4 +1,5 @@
 name: Update Moazrovne Dataset
+
 on:
   schedule:
     - cron: '0 2 * * 4'  # every Wednesday at 10:00 PM Eastern Time (converted to UTC)
@@ -24,11 +25,14 @@ jobs:
     - name: Run scraper
       run: python fetch_new_questions.py
 
+    - name: Convert CSV to JSON
+      run: python convertor.py
+
     - name: Commit changes
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
-        git add data/moazrovne_dataset.csv data/html/ data/images/
+        git add data/moazrovne_dataset.csv data/moazrovne_dataset.json data/html/ data/images/
         git diff --cached --quiet || git commit -m "🔄 Auto-update Moazrovne dataset"
 
     - name: Push changes

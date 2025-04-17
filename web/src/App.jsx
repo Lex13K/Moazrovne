@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 
-const STORAGE_KEY = 'moazrovne_user'
 const TOKEN = import.meta.env.VITE_GITHUB_TOKEN
 const REPO = 'Lex13K/Moazrovne'
 const BRANCH = 'main'
@@ -88,7 +87,7 @@ export default function App() {
         const json = await res.json()
         return JSON.parse(atob(json.content))
       }
-    } catch (err) {
+    } catch {
       console.warn("⚠️ No ratings file found for user, starting fresh.")
     }
 
@@ -110,7 +109,7 @@ export default function App() {
       const json = await res.json()
       return JSON.parse(atob(json.content))
     } else {
-      console.error("❌ Failed to fetch questions.json:", await res.text())
+      console.error("❌ Failed to fetch questions:", await res.text())
       return []
     }
   }
@@ -140,7 +139,6 @@ export default function App() {
     }
 
     setLoadingRatings(true)
-    localStorage.setItem(STORAGE_KEY, cleaned)
     const loadedRatings = await fetchRatingsFromGitHub(cleaned)
     setRated(prev => ({ ...prev, [cleaned]: loadedRatings }))
     setUserId(cleaned)
@@ -175,13 +173,6 @@ export default function App() {
 
     fetchAllowedUsers()
   }, [])
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && allowedUsers.includes(saved)) {
-      handleLogin(saved)
-    }
-  }, [allowedUsers])
 
   useEffect(() => {
     if (userId && questions.length > 0 && unseen.length > 0) {
