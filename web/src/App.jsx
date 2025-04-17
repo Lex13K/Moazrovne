@@ -78,7 +78,7 @@ export default function App() {
     const filePath = `ratings/user_${userId}.json`
     const repo = "Lex13K/Moazrovne"
     const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
-
+  
     try {
       const res = await fetch(apiUrl, {
         headers: {
@@ -94,10 +94,10 @@ export default function App() {
     } catch (err) {
       console.warn("ℹ️ Could not fetch existing ratings.")
     }
-
+  
     return {}
   }
-
+  
   async function rateQuestion(score) {
     if (!current || isRatingDisabled) return
     setIsRatingDisabled(true)
