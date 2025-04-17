@@ -28,7 +28,7 @@ jobs:
       run: |
         git config user.name "github-actions"
         git config user.email "actions@github.com"
-        git add data/moazrovne_dataset.csv data/html/
+        git add data/moazrovne_dataset.csv data/html/ data/images/
         git diff --cached --quiet || git commit -m "🔄 Auto-update Moazrovne dataset"
 
     - name: Push changes
