@@ -5,10 +5,7 @@ const STORAGE_KEY = 'moazrovne_rated'
 
 export default function App() {
   const [userId, setUserId] = useState('')
-  const [rated, setRated] = useState(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : {}
-  })
+  const [rated, setRated] = useState({})
   const [current, setCurrent] = useState(null)
   const [showAnswer, setShowAnswer] = useState(false)
 
@@ -20,7 +17,58 @@ export default function App() {
     setShowAnswer(false)
   }
 
-  function rateQuestion(score) {
+  async function saveRatingToGitHub(userId, questionId, score) {
+    const token = import.meta.env.VITE_GITHUB_TOKEN
+    const filePath = `ratings/user_${userId}.json`
+    const repo = "Lex13K/Moazrovne"
+    const branch = "main"
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
+
+    let existingData = {}
+    let sha = null
+
+    try {
+      const res = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json"
+        }
+      })
+      if (res.ok) {
+        const json = await res.json()
+        sha = json.sha
+        existingData = JSON.parse(atob(json.content))
+      }
+    } catch (err) {
+      console.warn("ℹ️ No existing rating file — will create new.")
+    }
+
+    existingData[questionId] = score
+
+    const payload = {
+      message: `⭐️ User ${userId} rated question ${questionId} with ${score}`,
+      content: btoa(JSON.stringify(existingData, null, 2)),
+      branch,
+      ...(sha && { sha })
+    }
+
+    const putRes = await fetch(apiUrl, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json"
+      },
+      body: JSON.stringify(payload)
+    })
+
+    if (!putRes.ok) {
+      console.error("❌ Failed to save rating:", await putRes.text())
+    } else {
+      console.log("✅ Rating saved to GitHub!")
+    }
+  }
+
+  async function rateQuestion(score) {
     const updated = {
       ...rated,
       [userId]: {
@@ -29,7 +77,7 @@ export default function App() {
       }
     }
     setRated(updated)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+    await saveRatingToGitHub(userId, current.question_id, score)
     setTimeout(() => nextQuestion(), 300)
   }
 
@@ -69,7 +117,12 @@ export default function App() {
               Reveal Answer
             </button>
           ) : (
-            <p className="mb-4"><strong>Answer:</strong> {current.answer}</p>
+            <>
+              <p className="mb-2"><strong>Answer:</strong> {current.answer}</p>
+              {current.comment && (
+                <p className="mb-4 italic text-gray-700">{current.comment}</p>
+              )}
+            </>
           )}
 
           <p className="mb-2">Rate this question:</p>
