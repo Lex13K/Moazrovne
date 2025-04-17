@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import questions from './questions.json'
 
-const STORAGE_KEY = 'moazrovne_rated'
+const STORAGE_KEY = 'moazrovne_user'
 
 export default function App() {
   const [userId, setUserId] = useState('')
@@ -11,6 +11,7 @@ export default function App() {
   const [showAnswer, setShowAnswer] = useState(false)
   const [isRatingDisabled, setIsRatingDisabled] = useState(false)
   const [error, setError] = useState("")
+  const [loadingRatings, setLoadingRatings] = useState(false)
 
   const unseen = questions.filter(q => !(rated[userId] || {})[q.question_id])
 
@@ -72,6 +73,31 @@ export default function App() {
     }
   }
 
+  async function fetchRatingsFromGitHub(userId) {
+    const token = import.meta.env.VITE_GITHUB_TOKEN
+    const filePath = `ratings/user_${userId}.json`
+    const repo = "Lex13K/Moazrovne"
+    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
+
+    try {
+      const res = await fetch(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json"
+        }
+      })
+      if (res.ok) {
+        const json = await res.json()
+        const parsed = JSON.parse(atob(json.content))
+        return parsed
+      }
+    } catch (err) {
+      console.warn("ℹ️ Could not fetch existing ratings.")
+    }
+
+    return {}
+  }
+
   async function rateQuestion(score) {
     if (!current || isRatingDisabled) return
     setIsRatingDisabled(true)
@@ -89,18 +115,23 @@ export default function App() {
     setTimeout(() => nextQuestion(), 500)
   }
 
-  function handleLogin(name) {
+  async function handleLogin(name) {
     const cleaned = name.trim()
-    if (allowedUsers.includes(cleaned)) {
-      setUserId(cleaned)
-      localStorage.setItem("moazrovne_user", cleaned)
-      setError("")
-    } else {
+    if (!allowedUsers.includes(cleaned)) {
       setError("User not allowed. Please enter a valid name.")
+      return
     }
+
+    setLoadingRatings(true)
+    localStorage.setItem(STORAGE_KEY, cleaned)
+    const loadedRatings = await fetchRatingsFromGitHub(cleaned)
+    setRated(prev => ({ ...prev, [cleaned]: loadedRatings }))
+    setUserId(cleaned)
+    setError("")
+    setLoadingRatings(false)
   }
 
-  // 🔁 Load allowed users from ratings/allowed.txt
+  // 🔁 Load allowed usernames
   useEffect(() => {
     fetch("../ratings/allowed.txt")
       .then(res => res.text())
@@ -114,10 +145,12 @@ export default function App() {
       })
   }, [])
 
-  // 🔁 Restore saved user (if valid)
+  // 🔁 Load last used user if valid
   useEffect(() => {
-    const saved = localStorage.getItem("moazrovne_user")
-    if (saved) setUserId(saved)
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved && allowedUsers.includes(saved)) {
+      handleLogin(saved)
+    }
   }, [allowedUsers])
 
   useEffect(() => {
@@ -127,7 +160,10 @@ export default function App() {
   return (
     <main className="p-4 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">🧠 Moazrovne Quiz</h1>
-      {!userId ? (
+
+      {loadingRatings ? (
+        <p>🔄 Loading your progress...</p>
+      ) : !userId ? (
         <div>
           <p className="mb-2">Enter your name:</p>
           <input
