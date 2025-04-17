@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react'
-import questions from './questions.json'
 
 const STORAGE_KEY = 'moazrovne_user'
+const GITHUB_REPO = 'Lex13K/Moazrovne'
+const BRANCH = 'main'
+const TOKEN = import.meta.env.VITE_GITHUB_TOKEN
 
 export default function App() {
   const [userId, setUserId] = useState('')
   const [allowedUsers, setAllowedUsers] = useState([])
   const [rated, setRated] = useState({})
+  const [questions, setQuestions] = useState([])
   const [current, setCurrent] = useState(null)
   const [showAnswer, setShowAnswer] = useState(false)
   const [isRatingDisabled, setIsRatingDisabled] = useState(false)
   const [error, setError] = useState("")
-  const [loadingRatings, setLoadingRatings] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const unseen = questions.filter(q => !(rated[userId] || {})[q.question_id])
 
@@ -22,12 +25,66 @@ export default function App() {
     setIsRatingDisabled(false)
   }
 
+  async function fetchGitHubFile(path) {
+    const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`
+    const res = await fetch(apiUrl, {
+      headers: {
+        Authorization: `Bearer ${TOKEN}`,
+        Accept: "application/vnd.github+json"
+      }
+    })
+    if (!res.ok) throw new Error(`Failed to fetch ${path}`)
+    const json = await res.json()
+    return atob(json.content)
+  }
+
+  async function fetchQuestionsFromGitHub() {
+    try {
+      const raw = await fetchGitHubFile('data/moazrovne_dataset.csv')
+      const lines = raw.trim().split('\n').slice(1)
+      const parsed = lines.map(line => {
+        const [question_id, question, answer, comment, source, packet, image, author] = line.split(/,(?![^"]*"(?:(?:[^"]*"){2})*[^"]*$)/).map(x => x.replace(/^"|"$/g, '').replace(/""/g, '"'))
+        return {
+          question_id: parseInt(question_id),
+          question,
+          answer,
+          comment,
+          source,
+          packet,
+          image: image === '1' ? 1 : 0,
+          author
+        }
+      })
+      setQuestions(parsed)
+    } catch (err) {
+      console.error("❌ Failed to fetch questions.csv:", err)
+    }
+  }
+
+  async function fetchRatingsFromGitHub(userId) {
+    try {
+      const raw = await fetchGitHubFile(`ratings/user_${userId}.json`)
+      return JSON.parse(raw)
+    } catch {
+      console.warn("ℹ️ No ratings file found.")
+      return {}
+    }
+  }
+
+  async function fetchAllowedUsersFromGitHub() {
+    try {
+      const raw = await fetchGitHubFile('ratings/allowed.txt')
+      const names = raw.includes(',') ? raw.split(',') : raw.split('\n')
+      return names.map(n => n.trim()).filter(Boolean)
+    } catch (err) {
+      console.error("❌ Failed to fetch allowed.txt:", err)
+      return []
+    }
+  }
+
   async function saveRatingToGitHub(userId, questionId, score) {
-    const token = import.meta.env.VITE_GITHUB_TOKEN
     const filePath = `ratings/user_${userId}.json`
-    const repo = "Lex13K/Moazrovne"
-    const branch = "main"
-    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
+    const apiUrl = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`
 
     let existingData = {}
     let sha = null
@@ -35,7 +92,7 @@ export default function App() {
     try {
       const res = await fetch(apiUrl, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${TOKEN}`,
           Accept: "application/vnd.github+json"
         }
       })
@@ -44,23 +101,21 @@ export default function App() {
         sha = json.sha
         existingData = JSON.parse(atob(json.content))
       }
-    } catch (err) {
-      console.warn("ℹ️ No existing rating file — creating new.")
-    }
+    } catch {}
 
     existingData[questionId] = score
 
     const payload = {
       message: `⭐️ ${userId} rated ${questionId} with ${score}`,
       content: btoa(JSON.stringify(existingData, null, 2)),
-      branch,
+      branch: BRANCH,
       ...(sha && { sha })
     }
 
     const putRes = await fetch(apiUrl, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${TOKEN}`,
         Accept: "application/vnd.github+json"
       },
       body: JSON.stringify(payload)
@@ -69,35 +124,10 @@ export default function App() {
     if (!putRes.ok) {
       console.error("❌ Failed to save rating:", await putRes.text())
     } else {
-      console.log("✅ Rating saved to GitHub!")
+      console.log("✅ Rating saved to GitHub.")
     }
   }
 
-  async function fetchRatingsFromGitHub(userId) {
-    const token = import.meta.env.VITE_GITHUB_TOKEN
-    const filePath = `ratings/user_${userId}.json`
-    const repo = "Lex13K/Moazrovne"
-    const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
-  
-    try {
-      const res = await fetch(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json"
-        }
-      })
-      if (res.ok) {
-        const json = await res.json()
-        const parsed = JSON.parse(atob(json.content))
-        return parsed
-      }
-    } catch (err) {
-      console.warn("ℹ️ Could not fetch existing ratings.")
-    }
-  
-    return {}
-  }
-  
   async function rateQuestion(score) {
     if (!current || isRatingDisabled) return
     setIsRatingDisabled(true)
@@ -122,67 +152,41 @@ export default function App() {
       return
     }
 
-    setLoadingRatings(true)
     localStorage.setItem(STORAGE_KEY, cleaned)
     const loadedRatings = await fetchRatingsFromGitHub(cleaned)
     setRated(prev => ({ ...prev, [cleaned]: loadedRatings }))
     setUserId(cleaned)
     setError("")
-    setLoadingRatings(false)
   }
 
-  // 🔁 Load allowed usernames from GitHub API
   useEffect(() => {
-    async function fetchAllowedUsers() {
-      const token = import.meta.env.VITE_GITHUB_TOKEN
-      const repo = "Lex13K/Moazrovne"
-      const filePath = "ratings/allowed.txt"
-      const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
+    async function initialize() {
+      const [users, _] = await Promise.all([
+        fetchAllowedUsersFromGitHub(),
+        fetchQuestionsFromGitHub()
+      ])
+      setAllowedUsers(users)
+      setLoading(false)
 
-      try {
-        const res = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/vnd.github+json"
-          }
-        })
-
-        if (res.ok) {
-          const json = await res.json()
-          const content = atob(json.content)
-          const raw = content.includes(',') ? content.split(',') : content.split('\n')
-          const cleaned = raw.map(name => name.trim()).filter(Boolean)
-          setAllowedUsers(cleaned)
-          console.log("✅ Allowed users loaded:", cleaned)
-        } else {
-          console.error("❌ Failed to fetch allowed.txt:", await res.text())
-        }
-      } catch (err) {
-        console.error("❌ Error fetching allowed.txt:", err)
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved && users.includes(saved)) {
+        await handleLogin(saved)
       }
     }
 
-    fetchAllowedUsers()
+    initialize()
   }, [])
-
-  // 🔁 Load last used user if valid
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved && allowedUsers.includes(saved)) {
-      handleLogin(saved)
-    }
-  }, [allowedUsers])
 
   useEffect(() => {
     if (userId && unseen.length > 0) nextQuestion()
-  }, [userId])
+  }, [userId, questions])
 
   return (
     <main className="p-4 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">🧠 Moazrovne Quiz</h1>
 
-      {loadingRatings ? (
-        <p>🔄 Loading your progress...</p>
+      {loading ? (
+        <p>🔄 Loading...</p>
       ) : !userId ? (
         <div>
           <p className="mb-2">Enter your name:</p>
@@ -199,7 +203,7 @@ export default function App() {
           <p className="mb-4 whitespace-pre-line">{current.question}</p>
           {current.image === 1 && (
             <img
-              src={`../data/images/qid_${current.question_id}.jpg`}
+              src={`https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/data/images/qid_${current.question_id}.jpg`}
               alt="Question"
               className="mb-4 rounded border"
             />
@@ -219,7 +223,6 @@ export default function App() {
               )}
             </>
           )}
-
           <p className="mb-2">Rate this question:</p>
           <div className="grid grid-cols-5 gap-2 mb-4">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
@@ -235,7 +238,6 @@ export default function App() {
               </button>
             ))}
           </div>
-
           <button
             className="bg-yellow-400 text-black px-4 py-2 rounded"
             onClick={nextQuestion}
