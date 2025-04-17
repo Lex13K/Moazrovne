@@ -131,18 +131,38 @@ export default function App() {
     setLoadingRatings(false)
   }
 
-  // 🔁 Load allowed usernames
+  // 🔁 Load allowed usernames from GitHub API
   useEffect(() => {
-    fetch("../ratings/allowed.txt")
-      .then(res => res.text())
-      .then(text => {
-        const raw = text.includes(',') ? text.split(',') : text.split('\n')
-        const cleaned = raw.map(name => name.trim()).filter(Boolean)
-        setAllowedUsers(cleaned)
-      })
-      .catch(err => {
-        console.error("❌ Failed to load allowed users:", err)
-      })
+    async function fetchAllowedUsers() {
+      const token = import.meta.env.VITE_GITHUB_TOKEN
+      const repo = "Lex13K/Moazrovne"
+      const filePath = "ratings/allowed.txt"
+      const apiUrl = `https://api.github.com/repos/${repo}/contents/${filePath}`
+
+      try {
+        const res = await fetch(apiUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/vnd.github+json"
+          }
+        })
+
+        if (res.ok) {
+          const json = await res.json()
+          const content = atob(json.content)
+          const raw = content.includes(',') ? content.split(',') : content.split('\n')
+          const cleaned = raw.map(name => name.trim()).filter(Boolean)
+          setAllowedUsers(cleaned)
+          console.log("✅ Allowed users loaded:", cleaned)
+        } else {
+          console.error("❌ Failed to fetch allowed.txt:", await res.text())
+        }
+      } catch (err) {
+        console.error("❌ Error fetching allowed.txt:", err)
+      }
+    }
+
+    fetchAllowedUsers()
   }, [])
 
   // 🔁 Load last used user if valid
