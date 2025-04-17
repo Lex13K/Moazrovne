@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-const TOKEN = import.meta.env.VITE_GITHUB_TOKEN
+const TOKEN = window.GITHUB_TOKEN
 const REPO = 'Lex13K/Moazrovne'
 const BRANCH = 'main'
 
