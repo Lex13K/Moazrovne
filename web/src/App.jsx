@@ -86,6 +86,11 @@ export default function App() {
       if (res.ok) {
         const json = await res.json()
         return JSON.parse(atob(json.content))
+      } else if (res.status === 404) {
+        console.warn("⚠️ No ratings file found for user, starting fresh.")
+        return {}
+      } else {
+        console.error("❌ Failed to fetch ratings:", await res.text())
       }
     } catch {
       console.warn("⚠️ No ratings file found for user, starting fresh.")
