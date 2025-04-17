@@ -1,0 +1,66 @@
+name: Update Moazrovne Dataset
+
+on:
+  schedule:
+    - cron: '0 2 * * 4'  # every Wednesday at 10:00 PM Eastern Time (converted to UTC)
+  workflow_dispatch:       # allows manual triggering too
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        run: python fetch_new_questions.py
+
+      - name: Convert CSV to JSON
+        run: python convertor.py
+
+      - name: Commit data changes
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/moazrovne_dataset.csv data/moazrovne_dataset.json data/html/ data/images/
+          git diff --cached --quiet || git commit -m "🔄 Auto-update Moazrovne dataset"
+
+      - name: Push data changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm install
+
+      - name: Build React app
+        working-directory: web
+        run: npm run build
+
+      - name: Inject GitHub token into frontend JS
+        run: |
+          js_file=$(find web/dist/assets -name 'index-*.js')
+          echo "window.GITHUB_TOKEN = '${{ secrets.VITE_GITHUB_TOKEN }}';" | cat - "$js_file" > temp && mv temp "$js_file"
+
+      - name: Move built site to docs folder and commit
+        run: |
+          rm -rf docs
+          mv web/dist docs
+          echo "" > docs/.nojekyll
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/
+          git diff --cached --quiet || git commit -m "🚀 Rebuild frontend"
+          it push
