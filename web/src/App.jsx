@@ -5,9 +5,12 @@ const STORAGE_KEY = 'moazrovne_rated'
 
 export default function App() {
   const [userId, setUserId] = useState('')
+  const [allowedUsers, setAllowedUsers] = useState([])
   const [rated, setRated] = useState({})
   const [current, setCurrent] = useState(null)
   const [showAnswer, setShowAnswer] = useState(false)
+  const [isRatingDisabled, setIsRatingDisabled] = useState(false)
+  const [error, setError] = useState("")
 
   const unseen = questions.filter(q => !(rated[userId] || {})[q.question_id])
 
@@ -15,6 +18,7 @@ export default function App() {
     const q = unseen[Math.floor(Math.random() * unseen.length)]
     setCurrent(q || null)
     setShowAnswer(false)
+    setIsRatingDisabled(false)
   }
 
   async function saveRatingToGitHub(userId, questionId, score) {
@@ -40,13 +44,13 @@ export default function App() {
         existingData = JSON.parse(atob(json.content))
       }
     } catch (err) {
-      console.warn("ℹ️ No existing rating file — will create new.")
+      console.warn("ℹ️ No existing rating file — creating new.")
     }
 
     existingData[questionId] = score
 
     const payload = {
-      message: `⭐️ User ${userId} rated question ${questionId} with ${score}`,
+      message: `⭐️ ${userId} rated ${questionId} with ${score}`,
       content: btoa(JSON.stringify(existingData, null, 2)),
       branch,
       ...(sha && { sha })
@@ -69,6 +73,9 @@ export default function App() {
   }
 
   async function rateQuestion(score) {
+    if (!current || isRatingDisabled) return
+    setIsRatingDisabled(true)
+
     const updated = {
       ...rated,
       [userId]: {
@@ -76,10 +83,42 @@ export default function App() {
         [current.question_id]: score
       }
     }
+
     setRated(updated)
     await saveRatingToGitHub(userId, current.question_id, score)
-    setTimeout(() => nextQuestion(), 300)
+    setTimeout(() => nextQuestion(), 500)
   }
+
+  function handleLogin(name) {
+    const cleaned = name.trim()
+    if (allowedUsers.includes(cleaned)) {
+      setUserId(cleaned)
+      localStorage.setItem("moazrovne_user", cleaned)
+      setError("")
+    } else {
+      setError("User not allowed. Please enter a valid name.")
+    }
+  }
+
+  // 🔁 Load allowed users from ratings/allowed.txt
+  useEffect(() => {
+    fetch("../ratings/allowed.txt")
+      .then(res => res.text())
+      .then(text => {
+        const raw = text.includes(',') ? text.split(',') : text.split('\n')
+        const cleaned = raw.map(name => name.trim()).filter(Boolean)
+        setAllowedUsers(cleaned)
+      })
+      .catch(err => {
+        console.error("❌ Failed to load allowed users:", err)
+      })
+  }, [])
+
+  // 🔁 Restore saved user (if valid)
+  useEffect(() => {
+    const saved = localStorage.getItem("moazrovne_user")
+    if (saved) setUserId(saved)
+  }, [allowedUsers])
 
   useEffect(() => {
     if (userId && unseen.length > 0) nextQuestion()
@@ -90,13 +129,13 @@ export default function App() {
       <h1 className="text-2xl font-bold mb-4">🧠 Moazrovne Quiz</h1>
       {!userId ? (
         <div>
-          <p className="mb-2">Enter your user number (e.g. 1–4):</p>
+          <p className="mb-2">Enter your name:</p>
           <input
             className="border p-2 w-full"
             type="text"
-            value={userId}
-            onChange={e => setUserId(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleLogin(e.target.value)}
           />
+          {error && <p className="text-red-500 mt-2">{error}</p>}
         </div>
       ) : current ? (
         <div>
@@ -126,17 +165,27 @@ export default function App() {
           )}
 
           <p className="mb-2">Rate this question:</p>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-2 mb-4">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
               <button
                 key={n}
-                className="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
+                className={`px-2 py-1 rounded ${
+                  isRatingDisabled ? "bg-gray-100 text-gray-400" : "bg-gray-200 hover:bg-gray-300"
+                }`}
                 onClick={() => rateQuestion(n)}
+                disabled={isRatingDisabled}
               >
                 {n}
               </button>
             ))}
           </div>
+
+          <button
+            className="bg-yellow-400 text-black px-4 py-2 rounded"
+            onClick={nextQuestion}
+          >
+            Skip
+          </button>
         </div>
       ) : (
         <p className="text-green-600 font-semibold mt-10">✅ You’ve rated all questions!</p>
