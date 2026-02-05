@@ -1,0 +1,10 @@
+# Build outputs
+dist/
+.vite/
+
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.*

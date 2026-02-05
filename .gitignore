@@ -1,0 +1,74 @@
+############################
+# OS / Editor / IDE
+############################
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+.vscode/
+.idea/
+*.code-workspace
+
+############################
+# Git / tooling caches
+############################
+*.log
+tmp/
+temp/
+
+############################
+# Secrets (never commit)
+############################
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+############################
+# Python
+############################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+env/
+pip-wheel-metadata/
+
+############################
+# Scraped / generated artifacts (MUST NEVER COMMIT)
+############################
+data/
+dataset/
+cache/
+html_cache/
+scrape_cache/
+downloads/
+images/
+
+*.csv
+*.jsonl
+
+############################
+# Frontend build output (repo root)
+############################
+docs/
+
+############################
+# Node (in any folder)
+############################
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################
+# Vite / build artifacts
+############################
+dist/
+.vite/

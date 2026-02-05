@@ -1,0 +1,161 @@
+name: Update dataset (scrape + upload to Supabase)
+
+on:
+  schedule:
+    - cron: "0 2 1 * *" # monthly: 1st day at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up Node (for Supabase upload/download)
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install frontend deps (provides @supabase/supabase-js)
+        working-directory: web
+        run: npm ci
+
+      - name: Prepare data folders
+        run: |
+          mkdir -p data
+          mkdir -p data/images
+
+      - name: Download previous CSV state from Supabase (if exists)
+        working-directory: web
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+          import { createClient } from "@supabase/supabase-js";
+
+          const url = process.env.SUPABASE_URL;
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+          if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+
+          const supabase = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+
+          fs.mkdirSync("../data", { recursive: true });
+
+          const { data, error } = await supabase.storage.from("ci").download("moazrovne_dataset.csv");
+
+          // If missing, treat as first run — do nothing.
+          if (error) {
+            const msg = String(error?.message || error).toLowerCase();
+            if (msg.includes("not found") || msg.includes("object") || msg.includes("404")) {
+              console.log("No prior CSV found in ci/moazrovne_dataset.csv (first run).");
+              process.exit(0);
+            }
+            throw error;
+          }
+
+          const buf = Buffer.from(await data.arrayBuffer());
+          fs.writeFileSync("../data/moazrovne_dataset.csv", buf);
+          console.log("Downloaded previous CSV state to data/moazrovne_dataset.csv");
+          NODE
+
+      - name: Run scraper
+        run: python fetch_new_questions.py
+
+      - name: Convert CSV to JSON
+        run: python convertor.py
+
+      - name: Upload CSV + JSON + images to Supabase Storage
+        working-directory: web
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node --input-type=module - <<'NODE'
+          import fs from "node:fs";
+          import path from "node:path";
+          import { createClient } from "@supabase/supabase-js";
+
+          const url = process.env.SUPABASE_URL;
+          const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+          if (!url || !key) throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
+
+          const supabase = createClient(url, key, {
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+
+          function mustExist(p) {
+            if (!fs.existsSync(p) || fs.statSync(p).size === 0) {
+              throw new Error(`Missing or empty required file: ${p}`);
+            }
+          }
+
+          function contentTypeFor(filePath) {
+            const ext = path.extname(filePath).toLowerCase();
+            if (ext === ".json") return "application/json";
+            if (ext === ".csv") return "text/csv";
+            if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+            if (ext === ".png") return "image/png";
+            if (ext === ".webp") return "image/webp";
+            return "application/octet-stream";
+          }
+
+          async function upload(bucket, objectPath, localPath) {
+            const body = fs.readFileSync(localPath);
+            const { error } = await supabase.storage.from(bucket).upload(objectPath, body, {
+              upsert: true,
+              contentType: contentTypeFor(localPath),
+              cacheControl: "3600",
+            });
+            if (error) throw new Error(`Upload failed: ${bucket}/${objectPath}: ${error.message}`);
+          }
+
+          // Required artifacts (relative to web/)
+          mustExist("../data/moazrovne_dataset.csv");
+          mustExist("../data/moazrovne_dataset.json");
+
+          // 1) Upload state CSV (CI-only bucket)
+          await upload("ci", "moazrovne_dataset.csv", "../data/moazrovne_dataset.csv");
+
+          // 2) Upload questions.json (app reads after login)
+          await upload("questions", "questions.json", "../data/moazrovne_dataset.json");
+
+          // 3) Upload images
+          const imgDir = "../data/images";
+          if (fs.existsSync(imgDir)) {
+            const files = fs.readdirSync(imgDir).filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f));
+            let count = 0;
+            for (const f of files) {
+              await upload("images", f, path.join(imgDir, f));
+              count++;
+            }
+            console.log(`Uploaded ${count} image(s) to images bucket.`);
+          } else {
+            console.log("No data/images directory found; skipping image upload.");
+          }
+
+          console.log("Upload complete.");
+          NODE
