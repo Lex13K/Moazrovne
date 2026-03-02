@@ -10,6 +10,9 @@ import { downloadJson } from "./api/storage";
 export default function App() {
   const [session, setSession] = useState(null);
   const [mode, setMode] = useState("rating"); // "rating" | "game" | "history"
+  const [resetMode, setResetMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetStatus, setResetStatus] = useState("");
 
   const [questions, setQuestions] = useState([]);
   const [myRatings, setMyRatings] = useState(new Map());
@@ -20,8 +23,13 @@ export default function App() {
   // --- Auth session wiring ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
+      if (event === "PASSWORD_RECOVERY") {
+        setResetMode(true);
+        setResetStatus("");
+        setNewPassword("");
+      }
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -68,6 +76,16 @@ export default function App() {
 
   const ratedCount = useMemo(() => myRatings.size, [myRatings]);
 
+  async function handlePasswordReset(e) {
+    e.preventDefault();
+    setResetStatus("Saving...");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return setResetStatus(error.message);
+    setResetMode(false);
+    setNewPassword("");
+    setResetStatus("");
+  }
+
   const [viewQuestionId, setViewQuestionId] = useState(null);
 
   function handleViewQuestion(id) {
@@ -85,7 +103,38 @@ export default function App() {
 
       {error ? <p className="text-red-500 mb-3">{error}</p> : null}
 
-      {!session ? (
+      {resetMode ? (
+        <form onSubmit={handlePasswordReset} className="space-y-3 max-w-xs">
+          <h2 className="font-semibold text-lg">Set new password</h2>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="New password"
+            autoComplete="new-password"
+            minLength={6}
+            required
+            className="border rounded px-2 py-1 w-full"
+          />
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={newPassword.length < 6}
+              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            >
+              Save password
+            </button>
+            <button
+              type="button"
+              className="text-gray-500 underline text-sm self-center"
+              onClick={() => { setResetMode(false); setNewPassword(""); setResetStatus(""); }}
+            >
+              Cancel
+            </button>
+          </div>
+          {resetStatus && <p className="text-sm text-red-500">{resetStatus}</p>}
+        </form>
+      ) : !session ? (
         <p className="text-gray-700">Sign in above to load questions and start.</p>
       ) : (
         <>
@@ -160,3 +209,4 @@ export default function App() {
     </main>
   );
 }
+
