@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { getUserQuestionStats } from "../api/game";
+import { getUserQuestionStats, getRatingsSummary } from "../api/game";
 import { upsertRating } from "../api/ratings";
 
 const SORT_FIELDS = [
@@ -26,6 +26,7 @@ function sortVal(row, field) {
 
 export default function HistoryMode({ questions, myRatings, setMyRatings, onViewQuestion }) {
   const [stats, setStats] = useState([]);
+  const [globalSummary, setGlobalSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterText, setFilterText] = useState("");
@@ -42,14 +43,23 @@ export default function HistoryMode({ questions, myRatings, setMyRatings, onView
     setLoading(true);
     setError("");
     try {
-      const s = await getUserQuestionStats();
+      const [s, summary] = await Promise.all([getUserQuestionStats(), getRatingsSummary()]);
       setStats(s);
+      setGlobalSummary(summary);
     } catch (e) {
       setError(e?.message ?? String(e));
     } finally {
       setLoading(false);
     }
   }
+
+  const myRatedCount = useMemo(() => stats.filter((s) => s.rating != null).length, [stats]);
+
+  const myAvgRating = useMemo(() => {
+    const rated = stats.filter((s) => s.rating != null);
+    if (!rated.length) return null;
+    return rated.reduce((sum, s) => sum + s.rating, 0) / rated.length;
+  }, [stats]);
 
   const questionsById = useMemo(() => {
     const m = new Map();
@@ -133,6 +143,29 @@ export default function HistoryMode({ questions, myRatings, setMyRatings, onView
       </div>
 
       {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      {/* Summary bar */}
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="bg-gray-50 rounded-lg py-2 px-1 border">
+          <p className="text-xs text-gray-400 mb-0.5">Rated</p>
+          <p className="text-base font-semibold text-gray-700">
+            {myRatedCount}
+            <span className="text-xs font-normal text-gray-400"> / {questions.length}</span>
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-lg py-2 px-1 border">
+          <p className="text-xs text-gray-400 mb-0.5">My avg</p>
+          <p className="text-base font-semibold text-gray-700">
+            {myAvgRating != null ? myAvgRating.toFixed(1) : "—"}
+          </p>
+        </div>
+        <div className="bg-gray-50 rounded-lg py-2 px-1 border">
+          <p className="text-xs text-gray-400 mb-0.5">Global avg</p>
+          <p className="text-base font-semibold text-gray-700">
+            {globalSummary?.avg_rating != null ? Number(globalSummary.avg_rating).toFixed(1) : "—"}
+          </p>
+        </div>
+      </div>
 
       {/* Sort controls */}
       <div className="flex gap-1 flex-wrap items-center">

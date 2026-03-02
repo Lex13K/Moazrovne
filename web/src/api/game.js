@@ -122,3 +122,9 @@ export async function getUserQuestionStats() {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getRatingsSummary() {
+  const { data, error } = await supabase.rpc("get_ratings_summary");
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
