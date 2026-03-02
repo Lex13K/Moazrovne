@@ -68,6 +68,13 @@ export default function App() {
 
   const ratedCount = useMemo(() => myRatings.size, [myRatings]);
 
+  const [viewQuestionId, setViewQuestionId] = useState(null);
+
+  function handleViewQuestion(id) {
+    setViewQuestionId(id);
+    setMode("rating");
+  }
+
   return (
     <main className="p-4 max-w-xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Moazrovne Quiz</h1>
@@ -123,6 +130,8 @@ export default function App() {
               setMyRatings={setMyRatings}
               loadingQuestions={loadingQuestions}
               loadingRatings={loadingRatings}
+              viewQuestionId={viewQuestionId}
+              onClearView={() => setViewQuestionId(null)}
             />
           </div>
 
@@ -142,6 +151,7 @@ export default function App() {
                 questions={questions}
                 myRatings={myRatings}
                 setMyRatings={setMyRatings}
+                onViewQuestion={handleViewQuestion}
               />
             )}
           </div>

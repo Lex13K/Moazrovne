@@ -24,7 +24,7 @@ function sortVal(row, field) {
   }
 }
 
-export default function HistoryMode({ questions, myRatings, setMyRatings }) {
+export default function HistoryMode({ questions, myRatings, setMyRatings, onViewQuestion }) {
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -181,6 +181,14 @@ export default function HistoryMode({ questions, myRatings, setMyRatings }) {
                   <span className="text-gray-400 mr-1 text-xs">#{row.question_id}</span>
                   {text.length > 120 ? text.slice(0, 120) + "…" : text}
                 </div>
+                {/* View button */}
+                <button
+                  className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  title="View in Rating Mode"
+                  onClick={() => onViewQuestion?.(row.question_id)}
+                >
+                  View
+                </button>
                 {/* Rating badge — click to open editor */}
                 <button
                   className={`shrink-0 text-sm font-semibold px-1.5 py-0.5 rounded ${
