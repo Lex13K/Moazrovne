@@ -3,6 +3,7 @@ import { useState } from "react";
 export default function HomeScreen({ onCreate, onJoin, error, loading }) {
   const [view, setView] = useState("choose");
   const [n, setN] = useState(3);
+  const [nRaw, setNRaw] = useState("3");
   const [code, setCode] = useState("");
 
   if (view === "choose") {
@@ -30,14 +31,34 @@ export default function HomeScreen({ onCreate, onJoin, error, loading }) {
         <h2 className="font-semibold text-lg">Create Party</h2>
         <div>
           <label className="block text-sm text-gray-600 mb-1">Questions each player must pick (1–10):</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={n}
-            onChange={(e) => setN(Math.max(1, Math.min(10, Number(e.target.value))))}
-            className="border rounded px-2 py-1 w-20"
-          />
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="w-9 h-9 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold disabled:opacity-40"
+              onClick={() => { const v = Math.max(1, n - 1); setN(v); setNRaw(String(v)); }}
+              disabled={n <= 1}
+            >−</button>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={nRaw}
+              onChange={(e) => setNRaw(e.target.value)}
+              onBlur={(e) => {
+                const parsed = parseInt(e.target.value, 10);
+                const clamped = isNaN(parsed) ? n : Math.max(1, Math.min(10, parsed));
+                setN(clamped);
+                setNRaw(String(clamped));
+              }}
+              className="border rounded px-2 py-1 w-16 text-center"
+            />
+            <button
+              type="button"
+              className="w-9 h-9 rounded bg-gray-200 hover:bg-gray-300 text-lg font-bold disabled:opacity-40"
+              onClick={() => { const v = Math.min(10, n + 1); setN(v); setNRaw(String(v)); }}
+              disabled={n >= 10}
+            >+</button>
+          </div>
         </div>
         <div className="flex gap-2">
           <button

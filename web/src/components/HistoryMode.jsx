@@ -205,7 +205,7 @@ export default function HistoryMode({ questions, myRatings, setMyRatings, onView
 
               {/* Metadata line */}
               <div className="flex gap-3 text-xs text-gray-400 mt-0.5 flex-wrap">
-                <span>{playCount > 0 ? `${playCount}× played` : "never played"}</span>
+                <span>{playCount > 0 ? `${playCount}× played | ` : "never played | "}</span>
                 <span>rated {fmtDate(row.last_rated_at)}</span>
                 {row.last_played_at && <span>last played {fmtDate(row.last_played_at)}</span>}
               </div>

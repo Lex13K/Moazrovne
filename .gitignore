@@ -18,6 +18,11 @@ tmp/
 temp/
 
 ############################
+# Local-only scripts (gitignored by design)
+############################
+pull_dataset.py
+
+############################
 # Secrets (never commit)
 ############################
 .env

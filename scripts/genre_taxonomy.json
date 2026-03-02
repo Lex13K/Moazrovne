@@ -1,0 +1,89 @@
+{
+  "labels": [
+    {
+      "id": "history",
+      "display": "History",
+      "description": "historical events, wars, empires, famous historical figures, dates, revolutions, ancient civilizations"
+    },
+    {
+      "id": "science",
+      "display": "Science",
+      "description": "chemistry, physics, biology, medicine, astronomy, mathematics, scientific discoveries and inventions"
+    },
+    {
+      "id": "geography",
+      "display": "Geography",
+      "description": "countries, cities, capitals, rivers, mountains, continents, maps, flags, landmarks"
+    },
+    {
+      "id": "art_architecture",
+      "display": "Art & Architecture",
+      "description": "painting, sculpture, architecture, design, famous artworks, museums, artists"
+    },
+    {
+      "id": "music",
+      "display": "Music",
+      "description": "musicians, singers, bands, songs, albums, musical instruments, opera, classical music, pop music"
+    },
+    {
+      "id": "cinema_tv",
+      "display": "Cinema & TV",
+      "description": "movies, television shows, actors, directors, film awards, animated films, characters from movies or TV"
+    },
+    {
+      "id": "literature",
+      "display": "Literature",
+      "description": "books, novels, authors, poets, literary characters, fairy tales, plays, quotes from literature"
+    },
+    {
+      "id": "sports",
+      "display": "Sports",
+      "description": "athletes, sports competitions, Olympics, world championships, football, tennis, records in sport"
+    },
+    {
+      "id": "politics_law",
+      "display": "Politics & Law",
+      "description": "politicians, governments, elections, international relations, legal systems, constitutions, political parties"
+    },
+    {
+      "id": "religion_mythology",
+      "display": "Religion & Mythology",
+      "description": "religion, gods, myths, legends, religious texts, rituals, ancient mythology, philosophy"
+    },
+    {
+      "id": "wordplay_language",
+      "display": "Wordplay & Language",
+      "description": "puns, riddles, wordplay, linguistics, etymology, translation jokes, anagrams, proverbs and sayings"
+    },
+    {
+      "id": "logic_math",
+      "display": "Logic & Math",
+      "description": "logic puzzles, number sequences, mathematical reasoning, brain teasers, patterns, codes and ciphers"
+    },
+    {
+      "id": "technology",
+      "display": "Technology",
+      "description": "computers, internet, engineering, inventions, brands, software, telecommunications, industrial technology"
+    },
+    {
+      "id": "nature_animals",
+      "display": "Nature & Animals",
+      "description": "animals, plants, ecosystems, natural phenomena, weather, oceans, forests, biology of living creatures"
+    },
+    {
+      "id": "everyday_culture",
+      "display": "Everyday Culture",
+      "description": "customs, traditions, humor, social phenomena, food, fashion, statistics and curious facts about daily life"
+    },
+    {
+      "id": "other",
+      "display": "Other",
+      "description": "does not clearly fit any other category"
+    }
+  ],
+  "_meta": {
+    "version": 1,
+    "label_count": 16,
+    "notes": "Used by tag_questions_gpu.py for zero-shot classification via facebook/bart-large-mnli after NLLB translation."
+  }
+}

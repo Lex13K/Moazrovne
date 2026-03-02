@@ -36,7 +36,7 @@ new_data = []
 
 missing_streak = 0
 MAX_MISSING = 40
-BUFFER_ID = 3000
+BUFFER_ID = 2000
 
 qid = max_qid + 1
 
